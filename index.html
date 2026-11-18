@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Açaí Logística · Central</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{
+  --bg:#f5f2fa; --surface:#fff; --surface-2:#eee8f6; --ink:#1e1530; --muted:#645b79; --line:#ded6ea;
+  --acai:#4a1d78; --acai-ink:#fff; --acai-soft:#e9ddf6; --accent-text:#4a1d78;
+  --ok:#17724a; --ok-soft:#dcf3e6; --warn:#8f5200; --warn-soft:#fbebcf; --bad:#b3202b; --bad-soft:#fde0e2;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#130c20; --surface:#1e1530; --surface-2:#2a1d40; --ink:#f1ebfa; --muted:#a99cc2; --line:#3a2b55;
+  --acai:#a874ec; --acai-ink:#12081f; --acai-soft:#35244f; --accent-text:#c9a6f5;
+  --ok:#5fd39a; --ok-soft:#173a2b; --warn:#f2b551; --warn-soft:#3d2c0e; --bad:#ff7a82; --bad-soft:#44171c; color-scheme:dark}
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+input,select,textarea{font-size:16px}
+h1,h2,h3{margin:0;line-height:1.2}
+h3{font-size:16px}
+.muted{color:var(--muted)}
+.wrap{max-width:1240px;margin:0 auto;padding:12px 16px 48px}
+:focus-visible{outline:3px solid var(--acai);outline-offset:2px}
+
+/* login */
+#login{min-height:100vh;display:grid;place-items:center;padding:16px}
+.lcard{width:100%;max-width:380px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:24px}
+.lcard h1{font-size:24px;margin-bottom:4px}
+.lcard form{display:grid;gap:12px;margin-top:18px}
+
+.fld{display:block;font-weight:600;font-size:13px}
+.fld input,.fld select,.fld textarea{display:block;width:100%;margin-top:4px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-weight:400}
+.btn{background:var(--acai);color:var(--acai-ink);border:0;border-radius:10px;padding:11px 16px;font-weight:600;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.danger{background:var(--bad);color:#fff}
+.btn.sm{padding:7px 12px;font-size:13px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.err{color:var(--bad);font-weight:500;min-height:1.2em;margin:0}
+.ok{color:var(--ok);font-weight:500;margin:0}
+
+/* topo */
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.brand{display:flex;align-items:center;gap:10px}
+.mark{width:38px;height:38px;border-radius:11px;background:var(--acai);color:var(--acai-ink);display:grid;place-items:center;font-weight:700}
+.tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tools select{padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.chip{font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px;background:var(--surface-2);color:var(--muted)}
+
+.tabs{display:flex;gap:4px;padding:4px;background:var(--surface-2);border-radius:12px;margin-bottom:12px;overflow-x:auto}
+.tabs button{flex:1;white-space:nowrap;border:0;background:transparent;padding:9px 12px;border-radius:9px;font-weight:600;color:var(--muted);cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.dot{display:inline-block;min-width:18px;height:18px;border-radius:9px;background:var(--bad);color:#fff;font-size:11px;line-height:18px;text-align:center;margin-left:6px;padding:0 5px}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px;min-width:0}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.off{background:var(--surface-2);color:var(--muted)}
+.alert{display:flex;gap:10px;padding:10px 12px;border-radius:10px;font-weight:500;margin-bottom:8px}
+.alert.bad{background:var(--bad-soft);color:var(--bad)}
+.alert.warn{background:var(--warn-soft);color:var(--warn)}
+
+.grid{display:block}
+@media (min-width:1000px){.grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:14px;align-items:start}}
+#map{height:380px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2)}
+.pad{padding:16px}
+.drow{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;width:100%;text-align:left;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);cursor:pointer;margin-top:8px}
+.drow[aria-pressed="true"]{border-color:var(--acai);background:var(--acai-soft)}
+.drow small{display:block;color:var(--muted);font-size:12px}
+.av{width:38px;height:38px;border-radius:50%;background:var(--acai-soft);color:var(--accent-text);display:grid;place-items:center;font-weight:600;font-size:13px}
+.drow[aria-pressed="true"] .av{background:var(--acai);color:var(--acai-ink)}
+.side{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.mk{width:30px;height:30px;border-radius:50%;border:3px solid #fff;color:#fff;font:700 11px/24px system-ui;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.mk.ok{background:#17724a}.mk.warn{background:#c77a00}.mk.bad{background:#b3202b}.mk.off{background:#7a7090}
+
+hr{border:0;border-top:1px solid var(--line);margin:14px 0}
+.stops{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:6px}
+.stop{display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;padding:8px 10px;border-radius:10px;background:var(--surface-2)}
+.stop.done{opacity:.55}
+.stop .n{width:28px;height:28px;border-radius:50%;background:var(--surface);display:grid;place-items:center;font-weight:600;font-size:12px}
+.tag{font-size:11px;font-weight:700;padding:1px 8px;border-radius:99px;background:var(--warn-soft);color:var(--warn);margin-left:6px}
+.seg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;background:var(--surface-2);padding:4px;border-radius:12px;margin:10px 0}
+.seg label{position:relative;display:block}
+.seg input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer}
+.seg span{display:block;text-align:center;padding:8px 4px;border-radius:9px;font-weight:600;font-size:13px;color:var(--muted);line-height:1.2}
+.seg input:checked+span{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.seg input:focus-visible+span{outline:3px solid var(--acai)}
+.form{display:grid;gap:10px}
+.ins{padding:10px 0;border-top:1px solid var(--line)}
+.ins:first-child{border-top:0}
+.trail{list-style:none;margin:8px 0 0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.trail li{padding:7px;border-radius:10px;background:var(--surface-2);color:var(--muted);font-size:12px;line-height:1.3}
+.trail b{display:block;font-size:12.5px}
+.trail li.done{background:var(--ok-soft);color:var(--ok)}
+.trail li.wait{background:var(--warn-soft);color:var(--warn)}
+.occ{padding:12px 0;border-top:1px solid var(--line)}
+.occ:first-child{border-top:0}
+.occ.done{opacity:.6}
+.occ p{margin:4px 0 0}
+a{color:var(--accent-text)}
+.empty{color:var(--muted);padding:8px 0}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+
+<div id="login">
+  <div class="lcard">
+    <h1>Açaí Logística</h1>
+    <p class="muted" style="margin:0">Central de logística. Entre com seu acesso de administrador.</p>
+    <form id="loginForm">
+      <label class="fld" for="lEmail">E-mail<input id="lEmail" type="email" autocomplete="username" required></label>
+      <label class="fld" for="lPass">Senha<input id="lPass" type="password" autocomplete="current-password" required></label>
+      <p class="err" id="lErr" role="alert"></p>
+      <button class="btn" type="submit">Entrar</button>
+    </form>
+  </div>
+</div>
+
+<div id="app" class="wrap" hidden>
+  <header class="top">
+    <div class="brand"><span class="mark">AL</span>
+      <div><h1 style="font-size:20px">Açaí Logística</h1><span class="muted" id="who"></span></div></div>
+    <div class="tools">
+      <label class="muted" for="regionSel" id="regionLbl">Região</label>
+      <select id="regionSel"></select>
+      <button class="btn ghost sm" id="logout" type="button">Sair</button>
+    </div>
+  </header>
+
+  <div id="alerts" aria-live="polite"></div>
+
+  <nav class="tabs" role="tablist" aria-label="Seções">
+    <button role="tab" data-tab="ops" aria-selected="true">Mapa e entregadores</button>
+    <button role="tab" data-tab="occ" aria-selected="false">Ocorrências<span class="dot" id="occDot" hidden></span></button>
+    <button role="tab" data-tab="new" aria-selected="false">Novo entregador</button>
+  </nav>
+
+  <section id="tab-ops">
+    <div class="grid">
+      <div>
+        <div class="card"><div class="row"><h3>GPS em tempo real</h3><span class="chip" id="mapCount"></span></div>
+          <div id="map" style="margin-top:10px"></div></div>
+        <div class="card"><h3>Entregadores</h3><div id="drivers"></div></div>
+      </div>
+      <div id="detail" class="card"><p class="empty" style="margin:0">Escolha um entregador no mapa ou na lista para ver a rota e enviar instruções.</p></div>
+    </div>
+  </section>
+
+  <section id="tab-occ" hidden><div class="card"><h3>Ocorrências dos entregadores</h3><div id="occList"></div></div></section>
+
+  <section id="tab-new" hidden>
+    <div class="card" style="max-width:520px">
+      <h3>Cadastrar entregador</h3>
+      <p class="muted">Cria o login e o cadastro. O entregador entra no aplicativo com este e-mail e esta senha.</p>
+      <form id="newForm" class="form">
+        <label class="fld" for="nName">Nome<input id="nName" required></label>
+        <label class="fld" for="nEmail">E-mail de acesso<input id="nEmail" type="email" autocomplete="off" required></label>
+        <label class="fld" for="nPass">Senha inicial (mínimo 6 caracteres)<input id="nPass" type="text" autocomplete="off" minlength="6" required></label>
+        <label class="fld" for="nVeh">Veículo<select id="nVeh"><option>Moto</option><option>Carro</option></select></label>
+        <label class="fld" for="nPlate">Placa<input id="nPlate" required></label>
+        <label class="fld" for="nRegion">Região<select id="nRegion"></select></label>
+        <p class="err" id="nMsg" role="status"></p>
+        <button class="btn" type="submit">Cadastrar entregador</button>
+      </form>
+    </div>
+  </section>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="config.js"></script>
+<script>
+(function(){
+'use strict';
+var OFFLINE_MS=90000, UNCONF_MS=60000;
+var $=function(s){return document.querySelector(s);};
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function ms(t){ return t&&t.toMillis?t.toMillis():null; }
+function hm(t){ var m=ms(t); return m?new Date(m).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'—'; }
+function hms(t){ var m=ms(t); return m?new Date(m).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'—'; }
+function ago(t){ var m=ms(t); if(!m) return '—'; var s=Math.max(0,Math.round((Date.now()-m)/1000)); return s<60?s+' s':s<3600?Math.floor(s/60)+' min':Math.floor(s/3600)+' h'; }
+function dd(d){ var o=d.data({serverTimestamps:'estimate'}); o.id=d.id; return o; }
+function regionName(id){ return (window.REGIONS&&window.REGIONS[id])||id||'—'; }
+
+firebase.initializeApp(window.FIREBASE_CONFIG);
+var auth=firebase.auth(), db=firebase.firestore();
+var FV=firebase.firestore.FieldValue;
+
+var me=null, drivers={}, occ=[], selUid=null, stops=[], instr=[], filter='all';
+var unsubs=[], unsubSel=[], seenOcc=null, fitted=false;
+var map=null, markers={};
+
+/* ---------- login ---------- */
+$('#loginForm').addEventListener('submit',function(e){
+  e.preventDefault(); $('#lErr').textContent='';
+  auth.signInWithEmailAndPassword($('#lEmail').value.trim(),$('#lPass').value)
+    .catch(function(){ $('#lErr').textContent='E-mail ou senha incorretos.'; });
+});
+$('#logout').addEventListener('click',function(){ auth.signOut(); });
+
+auth.onAuthStateChanged(function(user){
+  stopAll();
+  if(!user){ me=null; $('#app').hidden=true; $('#login').hidden=false; return; }
+  db.collection('admins').doc(user.uid).get().then(function(s){
+    if(!s.exists){
+      auth.signOut(); $('#lErr').textContent='Este acesso não é de administrador. Use o aplicativo do entregador.'; return;
+    }
+    var a=s.data(); me={uid:user.uid,role:a.role,regionId:a.regionId||null,name:a.name||user.email};
+    start();
+  }).catch(function(){ auth.signOut(); $('#lErr').textContent='Não foi possível confirmar o seu acesso. Tente de novo.'; });
+});
+
+function stopAll(){ unsubs.forEach(function(u){u();}); unsubs=[]; stopSel(); drivers={}; occ=[]; selUid=null; seenOcc=null; fitted=false; }
+function stopSel(){ unsubSel.forEach(function(u){u();}); unsubSel=[]; stops=[]; instr=[]; }
+
+/* ---------- início ---------- */
+function start(){
+  $('#login').hidden=true; $('#app').hidden=false;
+  var geral=me.role==='admin_geral';
+  $('#who').textContent=me.name+' · '+(geral?'Administrador geral':'Regional '+regionName(me.regionId));
+  var opts=Object.keys(window.REGIONS||{});
+  $('#regionSel').innerHTML=(geral?'<option value="all">Todas as regiões</option>':'')+opts.filter(function(k){return geral||k===me.regionId;}).map(function(k){return '<option value="'+esc(k)+'">'+esc(regionName(k))+'</option>';}).join('');
+  $('#regionSel').disabled=!geral; $('#regionLbl').hidden=!geral; $('#regionSel').hidden=!geral;
+  filter=geral?'all':me.regionId;
+  $('#nRegion').innerHTML=opts.filter(function(k){return geral||k===me.regionId;}).map(function(k){return '<option value="'+esc(k)+'">'+esc(regionName(k))+'</option>';}).join('');
+  initMap();
+
+  var dq=db.collection('drivers'); if(!geral) dq=dq.where('regionId','==',me.regionId);
+  unsubs.push(dq.onSnapshot(function(snap){
+    drivers={}; snap.docs.forEach(function(d){ drivers[d.id]=dd(d); });
+    if(selUid&&!drivers[selUid]){ selectDriver(null); }
+    renderAll();
+  },function(e){ showErr('drivers',e); }));
+
+  var oq=db.collection('occurrences'); if(!geral) oq=oq.where('regionId','==',me.regionId);
+  unsubs.push(oq.onSnapshot(function(snap){
+    var list=snap.docs.map(dd).sort(function(a,b){return (ms(b.createdAt)||0)-(ms(a.createdAt)||0);});
+    if(seenOcc){ list.forEach(function(o){ if(!seenOcc[o.id]&&!o.handled&&o.severity==='critical') beep(); }); }
+    seenOcc={}; list.forEach(function(o){seenOcc[o.id]=1;});
+    occ=list; renderAll();
+  },function(e){ showErr('occurrences',e); }));
+}
+function showErr(w,e){ console.error(w,e); $('#alerts').innerHTML='<div class="alert bad">Sem permissão ou sem conexão para ler os dados ('+esc(w)+'). '+esc(e&&e.code||'')+'</div>'; }
+
+var actx=null;
+function beep(){
+  try{ actx=actx||new (window.AudioContext||window.webkitAudioContext)(); var o=actx.createOscillator(), g=actx.createGain();
+    o.connect(g); g.connect(actx.destination); o.frequency.value=880; g.gain.value=.15; o.start(); o.stop(actx.currentTime+.4);}catch(e){}
+}
+
+/* ---------- regras de status ---------- */
+function status(d){
+  if(d.locked) return {k:'bad',t:'Bloqueado'};
+  if(!d.shiftActive) return {k:'off',t:'Fora de expediente'};
+  var seen=ms(d.lastSeen);
+  if(!seen||Date.now()-seen>OFFLINE_MS) return {k:'bad',t:'Offline'};
+  var gps=d.lastGps&&ms(d.lastGps.at);
+  if(d.gpsOk===false&&(!gps||Date.now()-gps>120000)) return {k:'warn',t:'GPS parado'};
+  return {k:'ok',t:'Online'};
+}
+function visible(){ return Object.keys(drivers).map(function(k){var d=drivers[k]; d.uid=k; return d;}).filter(function(d){return filter==='all'||d.regionId===filter;}).sort(function(a,b){return (a.name||'').localeCompare(b.name||'');}); }
+
+/* ---------- renderização ---------- */
+function renderAll(){ renderAlerts(); renderDrivers(); renderMap(); renderHead(); renderOcc(); }
+
+function renderAlerts(){
+  var out=[], list=visible();
+  occ.filter(function(o){return !o.handled&&o.severity==='critical'&&(filter==='all'||o.regionId===filter);}).forEach(function(o){
+    out.push(['bad','Emergência aberta: '+(o.driverName||'Entregador')+', '+(o.label||'')+' ('+hm(o.createdAt)+')']);
+  });
+  list.forEach(function(d){
+    var s=status(d);
+    if(!d.shiftActive) return;
+    if(s.t==='Offline') out.push(['bad',d.name+' sem conexão há '+ago(d.lastSeen)]);
+    else if(s.t==='GPS parado') out.push(['warn','O GPS de '+d.name+' parou de transmitir']);
+    if(typeof d.battery==='number'&&d.battery<20) out.push(['warn','Bateria de '+d.name+' em '+d.battery+'%']);
+  });
+  var un=instr.filter(function(i){return !i.confirmedAt&&ms(i.sentAt)&&Date.now()-ms(i.sentAt)>UNCONF_MS;});
+  if(un.length&&selUid&&drivers[selUid]) out.push(['warn',un.length+(un.length>1?' instruções ainda não foram reconhecidas por ':' instrução ainda não foi reconhecida por ')+drivers[selUid].name]);
+  $('#alerts').innerHTML=out.map(function(a){return '<div class="alert '+a[0]+'">'+esc(a[1])+'</div>';}).join('');
+}
+
+function renderDrivers(){
+  var list=visible();
+  $('#drivers').innerHTML=list.length?list.map(function(d){
+    var s=status(d), ini=(d.name||'?').split(' ').map(function(p){return p[0];}).slice(0,2).join('').toUpperCase();
+    return '<button class="drow" data-uid="'+esc(d.uid)+'" aria-pressed="'+(d.uid===selUid)+'"><span class="av">'+esc(ini)+'</span>'+
+      '<span><strong>'+esc(d.name)+'</strong><small>'+esc(d.vehicle)+' · '+esc(d.plate)+' · '+esc(regionName(d.regionId))+'</small></span>'+
+      '<span class="side"><span class="pill '+s.k+'">'+s.t+'</span><small>Bateria '+(typeof d.battery==='number'?d.battery+'%':'—')+'</small></span></button>';
+  }).join(''):'<p class="empty">Nenhum entregador nesta região.</p>';
+  var on=list.filter(function(d){return status(d).k==='ok';}).length;
+  $('#mapCount').textContent=on+' de '+list.length+' ao vivo';
+}
+
+function initMap(){
+  if(map||typeof L==='undefined'){ if(typeof L==='undefined') $('#map').innerHTML='<p class="muted pad">Mapa indisponível sem internet.</p>'; return; }
+  map=L.map('map').setView([-23.99,-46.35],10);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+}
+function renderMap(){
+  if(!map) return;
+  var list=visible(), keep={}, pts=[];
+  list.forEach(function(d){
+    if(!d.lastGps||typeof d.lastGps.lat!=='number') return;
+    var s=status(d), ll=[d.lastGps.lat,d.lastGps.lng], ini=(d.name||'?').split(' ').map(function(p){return p[0];}).slice(0,2).join('').toUpperCase();
+    keep[d.uid]=1; pts.push(ll);
+    var icon=L.divIcon({className:'',html:'<div class="mk '+s.k+'">'+esc(ini)+'</div>',iconSize:[30,30],iconAnchor:[15,15]});
+    if(markers[d.uid]){ markers[d.uid].setLatLng(ll).setIcon(icon); }
+    else { markers[d.uid]=L.marker(ll,{icon:icon}).addTo(map).on('click',function(){ selectDriver(d.uid); }); }
+    markers[d.uid].bindTooltip(d.name+' · '+s.t+' · última posição '+hm(d.lastGps.at));
+  });
+  Object.keys(markers).forEach(function(k){ if(!keep[k]){ map.removeLayer(markers[k]); delete markers[k]; } });
+  if(pts.length&&!fitted){ map.fitBounds(pts,{padding:[40,40],maxZoom:15}); fitted=true; }
+}
+
+/* ---------- detalhe do entregador ---------- */
+function selectDriver(uid){
+  stopSel(); selUid=uid;
+  if(!uid||!drivers[uid]){ selUid=null; $('#detail').innerHTML='<p class="empty" style="margin:0">Escolha um entregador no mapa ou na lista para ver a rota e enviar instruções.</p>'; renderDrivers(); return; }
+  var ref=db.collection('drivers').doc(uid);
+  buildDetail();
+  unsubSel.push(ref.collection('stops').orderBy('order').onSnapshot(function(s){ stops=s.docs.map(dd); renderRoute(); renderChange(); },function(e){showErr('stops',e);}));
+  unsubSel.push(ref.collection('instructions').orderBy('sentAt','desc').limit(20).onSnapshot(function(s){ instr=s.docs.map(dd); renderHist(); renderAlerts(); },function(e){showErr('instructions',e);}));
+  renderDrivers();
+  if(map&&drivers[uid].lastGps&&typeof drivers[uid].lastGps.lat==='number') map.setView([drivers[uid].lastGps.lat,drivers[uid].lastGps.lng],Math.max(map.getZoom(),14));
+}
+$('#drivers').addEventListener('click',function(e){ var b=e.target.closest('[data-uid]'); if(b) selectDriver(b.dataset.uid); });
+
+function buildDetail(){
+  $('#detail').innerHTML=
+    '<div id="dHead"></div><hr>'+
+    '<h3>Rota</h3><ol class="stops" id="dRoute"></ol><hr>'+
+    '<form id="compose" class="form" autocomplete="off"><h3>Nova instrução</h3>'+
+      '<div class="seg" role="radiogroup" aria-label="Tipo de instrução">'+
+        '<label><input type="radio" name="kind" value="add" checked><span>Adicionar entrega</span></label>'+
+        '<label><input type="radio" name="kind" value="change"><span>Alterar endereço</span></label>'+
+        '<label><input type="radio" name="kind" value="msg"><span>Mensagem</span></label></div>'+
+      '<div id="fAdd" class="form"><label class="fld" for="fClient">Cliente<input id="fClient"></label>'+
+        '<label class="fld" for="fAddr">Endereço<input id="fAddr" placeholder="Rua, número, bairro, cidade"></label>'+
+        '<label class="fld" for="fPos">Posição na rota<select id="fPos"><option value="next">Como próxima entrega</option><option value="end">No final da rota</option></select></label></div>'+
+      '<div id="fChange" class="form" hidden><label class="fld" for="fStop">Entrega a alterar<select id="fStop"></select></label>'+
+        '<label class="fld" for="fNew">Novo endereço<input id="fNew" placeholder="Rua, número, bairro, cidade"></label></div>'+
+      '<div id="fMsg" class="form" hidden><label class="fld" for="fText">Mensagem<textarea id="fText" rows="3"></textarea></label></div>'+
+      '<p class="err" id="cMsg" role="status"></p>'+
+      '<button class="btn" type="submit">Enviar ao entregador</button></form><hr>'+
+    '<h3>Histórico de instruções</h3><div id="dHist"></div>';
+  document.querySelectorAll('input[name="kind"]').forEach(function(r){ r.addEventListener('change',showKind); });
+  $('#compose').addEventListener('submit',sendInstr);
+  renderHead(); renderRoute(); renderChange(); renderHist();
+}
+function showKind(){ var k=document.querySelector('input[name="kind"]:checked').value; $('#fAdd').hidden=k!=='add'; $('#fChange').hidden=k!=='change'; $('#fMsg').hidden=k!=='msg'; }
+
+var lockArmed=false;
+function renderHead(){
+  var el=$('#dHead'); if(!el||!selUid||!drivers[selUid]) return;
+  var d=drivers[selUid], s=status(d);
+  el.innerHTML='<div class="row"><div><h2 style="font-size:19px">'+esc(d.name)+'</h2><span class="muted">'+esc(d.vehicle)+' · '+esc(d.plate)+' · '+esc(regionName(d.regionId))+'</span></div>'+
+    '<span class="pill '+s.k+'">'+s.t+'</span></div>'+
+    '<p class="muted" style="margin:8px 0">Bateria '+(typeof d.battery==='number'?d.battery+'%':'—')+' · último sinal há '+ago(d.lastSeen)+
+      (d.lastGps&&typeof d.lastGps.lat==='number'?' · posição '+d.lastGps.lat.toFixed(5)+', '+d.lastGps.lng.toFixed(5):' · sem posição')+'</p>'+
+    '<button class="btn '+(d.locked?'ghost':(lockArmed?'danger':'ghost'))+' sm" id="lockBtn" type="button">'+(d.locked?'Desbloquear terminal':(lockArmed?'Toque de novo para bloquear':'Bloquear terminal'))+'</button>';
+  $('#lockBtn').onclick=function(){
+    if(d.locked){ db.collection('drivers').doc(selUid).update({locked:false}); return; }
+    if(!lockArmed){ lockArmed=true; renderHead(); setTimeout(function(){lockArmed=false;renderHead();},4000); return; }
+    lockArmed=false; db.collection('drivers').doc(selUid).update({locked:true});
+  };
+}
+function renderRoute(){
+  var el=$('#dRoute'); if(!el) return;
+  var first=stops.filter(function(s){return !s.done;})[0];
+  el.innerHTML=stops.length?stops.map(function(s,i){
+    return '<li class="stop'+(s.done?' done':'')+'"><span class="n">'+(i+1)+'</span><div><strong>'+esc(s.client)+'</strong>'+(s.tag&&!s.done?'<span class="tag">'+esc(s.tag)+'</span>':'')+(first&&first.id===s.id?'<span class="tag" style="background:var(--acai-soft);color:var(--accent-text)">PRÓXIMA</span>':'')+
+      '<br><span class="muted">'+esc(s.address)+'</span></div></li>';
+  }).join(''):'<li class="empty">Nenhuma entrega na rota.</li>';
+}
+function renderChange(){
+  var el=$('#fStop'); if(!el) return; var cur=el.value;
+  el.innerHTML=stops.map(function(s,i){return s.done?'':'<option value="'+esc(s.id)+'">'+(i+1)+'. '+esc(s.client)+' – '+esc(s.address)+'</option>';}).join('');
+  if(cur) el.value=cur;
+}
+function renderHist(){
+  var el=$('#dHist'); if(!el) return;
+  el.innerHTML=instr.length?instr.map(function(i){
+    var over=!i.confirmedAt&&ms(i.sentAt)&&Date.now()-ms(i.sentAt)>UNCONF_MS;
+    var t1='<li class="done"><b>Enviada</b>'+hms(i.sentAt)+'</li>';
+    var t2=i.receivedAt?'<li class="done"><b>Recebida</b>'+hms(i.receivedAt)+'</li>':'<li class="wait"><b>Recebida</b>aguardando o aparelho</li>';
+    var t3=i.confirmedAt?'<li class="done"><b>Confirmada</b>'+hms(i.confirmedAt)+'</li>':i.receivedAt?'<li class="wait"><b>Confirmada</b>aguardando OK</li>':'<li><b>Confirmada</b>—</li>';
+    return '<div class="ins"><div class="row"><strong>'+esc(i.title)+'</strong>'+(over?'<span class="pill warn">Ainda não reconhecida</span>':'')+'</div>'+
+      '<div class="muted">'+(i.lines||[]).map(esc).join('<br>')+'</div><ol class="trail">'+t1+t2+t3+'</ol></div>';
+  }).join(''):'<p class="empty">Nenhuma instrução enviada.</p>';
+}
+
+function sendInstr(e){
+  e.preventDefault(); var msg=$('#cMsg'); msg.className='err'; msg.textContent='';
+  if(!selUid) return;
+  var kind=document.querySelector('input[name="kind"]:checked').value;
+  var ref=db.collection('drivers').doc(selUid), batch=db.batch(), inst={sentAt:FV.serverTimestamp(),receivedAt:null,confirmedAt:null};
+  if(kind==='add'){
+    var client=$('#fClient').value.trim(), addr=$('#fAddr').value.trim();
+    if(!client||!addr){ msg.textContent='Informe o cliente e o endereço.'; return; }
+    var pending=stops.filter(function(s){return !s.done;}), order;
+    if($('#fPos').value==='next'&&pending.length){
+      order=pending[0].order;
+      stops.filter(function(s){return s.order>=order;}).forEach(function(s){ batch.update(ref.collection('stops').doc(s.id),{order:FV.increment(1)}); });
+    } else order=(stops.length?Math.max.apply(null,stops.map(function(s){return s.order;})):0)+1;
+    batch.set(ref.collection('stops').doc(),{order:order,client:client,address:addr,done:false,tag:'NOVA'});
+    Object.assign(inst,{type:'add',title:'Alteração de rota',lines:[addr,'Cliente: '+client],footer:'Esta entrega foi acrescentada à sua rota.'});
+  } else if(kind==='change'){
+    var id=$('#fStop').value, st=stops.filter(function(s){return s.id===id&&!s.done;})[0], na=$('#fNew').value.trim();
+    if(!st||!na){ msg.textContent='Escolha a entrega e informe o novo endereço.'; return; }
+    batch.update(ref.collection('stops').doc(id),{address:na,tag:'ALTERADA'});
+    Object.assign(inst,{type:'change',title:'Alteração de rota',lines:['Cliente: '+st.client,'Antes: '+st.address,'Agora: '+na],footer:'O endereço desta entrega mudou.'});
+  } else {
+    var t=$('#fText').value.trim(); if(!t){ msg.textContent='Escreva a mensagem.'; return; }
+    Object.assign(inst,{type:'msg',title:'Mensagem da central',lines:[t],footer:''});
+  }
+  batch.set(ref.collection('instructions').doc(),inst);
+  batch.commit().then(function(){
+    msg.className='ok'; msg.textContent='Enviada às '+new Date().toLocaleTimeString('pt-BR')+'. Acompanhe os três estados no histórico.';
+    ['#fClient','#fAddr','#fNew','#fText'].forEach(function(s){ $(s).value=''; });
+  }).catch(function(err){ msg.textContent='Não foi possível enviar: '+(err&&err.code||'erro'); });
+}
+
+/* ---------- ocorrências ---------- */
+function renderOcc(){
+  var list=occ.filter(function(o){return filter==='all'||o.regionId===filter;});
+  var open=list.filter(function(o){return !o.handled;}).length;
+  $('#occDot').hidden=!open; $('#occDot').textContent=open;
+  $('#occList').innerHTML=list.length?list.map(function(o){
+    var cls=o.severity==='critical'?'bad':o.severity==='high'?'warn':'off', lab=o.severity==='critical'?'Crítica':o.severity==='high'?'Alta':'Aviso';
+    var loc=o.location&&typeof o.location.lat==='number'?'<a target="_blank" rel="noopener" href="https://www.openstreetmap.org/?mlat='+o.location.lat+'&mlon='+o.location.lng+'#map=17/'+o.location.lat+'/'+o.location.lng+'">Ver localização ('+o.location.lat.toFixed(5)+', '+o.location.lng.toFixed(5)+')</a> · posição das '+hm(o.location.at):'<span class="muted">Localização indisponível</span>';
+    return '<div class="occ'+(o.handled?' done':'')+'"><div class="row"><strong>'+esc(o.label)+'</strong><span class="pill '+(o.handled?'ok':cls)+'">'+(o.handled?'Atendida':lab)+'</span></div>'+
+      '<p>'+esc(o.driverName)+' · '+esc(o.vehicle)+' · '+hm(o.createdAt)+'</p><p>'+loc+'</p>'+(o.text?'<p>'+esc(o.text)+'</p>':'')+
+      (o.handled?'':'<p><button class="btn ghost sm" data-handle="'+esc(o.id)+'" type="button">Marcar como atendida</button></p>')+'</div>';
+  }).join(''):'<p class="empty">Nenhuma ocorrência.</p>';
+}
+$('#occList').addEventListener('click',function(e){ var b=e.target.closest('[data-handle]'); if(b) db.collection('occurrences').doc(b.dataset.handle).update({handled:true}); });
+
+/* ---------- cadastro de entregador ---------- */
+$('#newForm').addEventListener('submit',function(e){
+  e.preventDefault(); var m=$('#nMsg'); m.className='err'; m.textContent='Cadastrando…';
+  var name=$('#nName').value.trim(), email=$('#nEmail').value.trim(), pass=$('#nPass').value, region=$('#nRegion').value;
+  var sec; try{ sec=firebase.app('sec'); }catch(x){ sec=firebase.initializeApp(window.FIREBASE_CONFIG,'sec'); }
+  sec.auth().createUserWithEmailAndPassword(email,pass).then(function(c){
+    var uid=c.user.uid; return sec.auth().signOut().then(function(){
+      return db.collection('drivers').doc(uid).set({name:name,vehicle:$('#nVeh').value,plate:$('#nPlate').value.trim().toUpperCase(),regionId:region,shiftActive:false,locked:false});
+    });
+  }).then(function(){
+    m.className='ok'; m.textContent='Entregador cadastrado. Ele já pode entrar no aplicativo com '+email+'.'; $('#newForm').reset();
+  }).catch(function(err){
+    var c=err&&err.code||'';
+    m.className='err'; m.textContent=c==='auth/email-already-in-use'?'Este e-mail já está cadastrado.':c==='auth/weak-password'?'A senha precisa ter pelo menos 6 caracteres.':'Não foi possível cadastrar ('+c+').';
+  });
+});
+
+/* ---------- abas e filtro ---------- */
+document.querySelectorAll('.tabs [data-tab]').forEach(function(b){
+  b.addEventListener('click',function(){
+    document.querySelectorAll('.tabs [data-tab]').forEach(function(x){ x.setAttribute('aria-selected',x===b); });
+    ['ops','occ','new'].forEach(function(t){ $('#tab-'+t).hidden=t!==b.dataset.tab; });
+    if(b.dataset.tab==='ops'&&map) setTimeout(function(){ map.invalidateSize(); },50);
+  });
+});
+$('#regionSel').addEventListener('change',function(e){ filter=e.target.value; fitted=false; renderAll(); });
+setInterval(function(){ if(me){ renderAlerts(); renderDrivers(); renderHead(); renderHist(); } },5000);
+})();
+</script>
+</body>
+</html>
